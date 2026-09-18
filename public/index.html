@@ -1,0 +1,552 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CodeAlpha Social Media</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+
+        <h1>SocialConnect</h1>
+<nav>
+    <a href="index.html">Home</a>
+    <a href="profile.html">Profile</a>
+    <a href="users.html">Users</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+    <a href="#" onclick="logout()">Logout</a>
+</nav>
+    </header>
+
+
+    <main>
+
+        <section class="welcome">
+
+            <h2>Welcome to SocialConnect</h2>
+
+            <p>
+                Connect with people, share posts and interact with your community.
+            </p>
+
+        </section>
+
+
+        <!-- CREATE POST -->
+
+        <section class="posts">
+
+            <h2>Create a Post</h2>
+
+            <form id="postForm">
+
+                <textarea
+                    id="postContent"
+                    placeholder="What's on your mind?"
+                    rows="4"
+                    required
+                ></textarea>
+
+                <br><br>
+
+                <button type="submit">Post</button>
+
+            </form>
+
+            <hr>
+
+
+            <!-- DISPLAY POSTS -->
+
+            <h2>Recent Posts</h2>
+
+            <div id="post-list">
+
+                <p>Loading posts...</p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+
+    <script>
+
+        // =====================================
+        // CREATE POST
+        // =====================================
+
+        document
+            .getElementById("postForm")
+            .addEventListener("submit", async function(event) {
+
+                event.preventDefault();
+
+                const content =
+                    document.getElementById("postContent").value.trim();
+
+                const token =
+                    localStorage.getItem("token");
+
+
+                if (!token) {
+
+                    alert("Please login first.");
+
+                    return;
+                }
+
+
+                if (!content) {
+
+                    alert("Please enter something to post.");
+
+                    return;
+                }
+
+
+                try {
+
+                    const response = await fetch("/api/posts", {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type": "application/json",
+
+                            "Authorization": "Bearer " + token
+
+                        },
+
+                        body: JSON.stringify({
+                            content: content
+                        })
+
+                    });
+
+
+                    const data = await response.json();
+
+
+                    if (response.ok) {
+
+                        alert("Post created successfully!");
+
+                        document
+                            .getElementById("postContent")
+                            .value = "";
+
+                        loadPosts();
+
+                    } else {
+
+                        alert(
+                            data.error ||
+                            "Could not create post."
+                        );
+
+                    }
+
+                } catch (error) {
+
+                    console.error(error);
+
+                    alert("Server error.");
+
+                }
+
+            });
+
+
+
+        // =====================================
+        // LOAD POSTS
+        // =====================================
+
+        async function loadPosts() {
+
+            try {
+
+                const response =
+                    await fetch("/api/posts");
+
+
+                const posts =
+                    await response.json();
+
+
+                const postList =
+                    document.getElementById("post-list");
+
+
+                if (posts.length === 0) {
+
+                    postList.innerHTML =
+                        "<p>No posts yet.</p>";
+
+                    return;
+
+                }
+
+
+                postList.innerHTML = "";
+
+
+                posts.forEach(post => {
+
+                    const postDiv =
+                        document.createElement("div");
+
+                    postDiv.className = "post";
+
+
+                    postDiv.innerHTML = `
+
+                        <h3>${post.name}</h3>
+
+                        <p>${post.content}</p>
+
+                        <small>${post.created_at}</small>
+
+                        <br><br>
+
+
+                        <!-- LIKE BUTTON -->
+
+                        <button
+                            onclick="likePost(${post.id}, this)"
+                        >
+                            ❤️ Like
+                        </button>
+
+
+                        <br><br>
+
+
+                        <!-- COMMENT SECTION -->
+
+                        <h4>💬 Comments</h4>
+
+
+                        <div id="comments-${post.id}">
+                            Loading comments...
+                        </div>
+
+
+                        <br>
+
+
+                        <input
+                            type="text"
+                            id="comment-${post.id}"
+                            placeholder="Write a comment..."
+                        >
+
+
+                        <button
+                            onclick="addComment(${post.id})"
+                        >
+                            Comment
+                        </button>
+
+                    `;
+
+
+                    postList.appendChild(postDiv);
+
+
+                    loadComments(post.id);
+
+                });
+
+            } catch (error) {
+
+                console.error(error);
+
+                document.getElementById("post-list").innerHTML =
+                    "<p>Could not load posts.</p>";
+
+            }
+
+        }
+
+
+
+        // =====================================
+        // LIKE / UNLIKE
+        // =====================================
+
+        async function likePost(postId, button) {
+
+            const token =
+                localStorage.getItem("token");
+
+
+            if (!token) {
+
+                alert("Please login first.");
+
+                return;
+
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/posts/${postId}/like`,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Authorization":
+                                    "Bearer " + token
+                            }
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (response.ok) {
+
+                    if (data.message === "Post liked.") {
+
+                        button.textContent =
+                            "💔 Unlike";
+
+                    } else {
+
+                        button.textContent =
+                            "❤️ Like";
+
+                    }
+
+                } else {
+
+                    alert(
+                        data.error ||
+                        "Could not like post."
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert("Server error.");
+
+            }
+
+        }
+
+
+
+        // =====================================
+        // ADD COMMENT
+        // =====================================
+
+        async function addComment(postId) {
+
+            const token =
+                localStorage.getItem("token");
+
+
+            if (!token) {
+
+                alert("Please login first.");
+
+                return;
+
+            }
+
+
+            const input =
+                document.getElementById(
+                    `comment-${postId}`
+                );
+
+
+            const content =
+                input.value.trim();
+
+
+            if (!content) {
+
+                alert("Please write a comment.");
+
+                return;
+
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/posts/${postId}/comments`,
+                        {
+
+                            method: "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    "Bearer " + token
+
+                            },
+
+                            body: JSON.stringify({
+                                content: content
+                            })
+
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (response.ok) {
+
+                    input.value = "";
+
+                    loadComments(postId);
+
+                } else {
+
+                    alert(
+                        data.error ||
+                        "Could not add comment."
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert("Server error.");
+
+            }
+
+        }
+
+
+
+        // =====================================
+        // LOAD COMMENTS
+        // =====================================
+
+        async function loadComments(postId) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/posts/${postId}/comments`
+                    );
+
+
+                const comments =
+                    await response.json();
+
+
+                const commentBox =
+                    document.getElementById(
+                        `comments-${postId}`
+                    );
+
+
+                if (comments.length === 0) {
+
+                    commentBox.innerHTML =
+                        "<p>No comments yet.</p>";
+
+                    return;
+
+                }
+
+
+                commentBox.innerHTML = "";
+
+
+                comments.forEach(comment => {
+
+                    const commentDiv =
+                        document.createElement("div");
+
+
+                    commentDiv.innerHTML = `
+
+                        <p>
+                            <strong>
+                                ${comment.name}
+                            </strong>:
+                            ${comment.content}
+                        </p>
+
+                        <small>
+                            ${comment.created_at}
+                        </small>
+
+                    `;
+
+
+                    commentBox.appendChild(
+                        commentDiv
+                    );
+
+                });
+
+
+            } catch (error) {
+
+                console.error(error);
+
+            }
+
+        }
+
+
+
+        // =====================================
+        // LOAD POSTS WHEN PAGE OPENS
+        // =====================================
+function logout() {
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    alert("Logged out successfully!");
+
+    window.location.href = "login.html";
+}
+        loadPosts();
+
+    </script>
+
+
+</body>
+
+</html>
+```

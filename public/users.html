@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users - SocialConnect</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+        }
+
+        header {
+            background: #1877f2;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .user-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-card h3 {
+            margin: 0 0 8px;
+        }
+
+        .user-card p {
+            color: #666;
+        }
+
+        .counts {
+            margin: 12px 0;
+        }
+
+        button {
+            background: #1877f2;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .following {
+            background: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <h2>SocialConnect</h2>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="profile.html">Profile</a>
+        <a href="users.html">Users</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+        <a href="#" onclick="logout()">Logout</a>
+    </nav>
+
+</header>
+
+
+<div class="container">
+
+    <h2>👥 All Users</h2>
+
+    <div id="users-list">
+        Loading users...
+    </div>
+
+</div>
+
+
+<script>
+
+// ==============================
+// LOAD ALL USERS
+// ==============================
+
+async function loadUsers() {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+
+        document.getElementById("users-list").innerHTML =
+            "<p>Please login to see users.</p>";
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/users");
+
+        const users = await response.json();
+
+        const currentUser = JSON.parse(
+            localStorage.getItem("user")
+        );
+
+        const container =
+            document.getElementById("users-list");
+
+        container.innerHTML = "";
+
+
+        users.forEach(user => {
+
+            // ==============================
+            // CURRENT USER
+            // ==============================
+
+            if (currentUser && user.id === currentUser.id) {
+
+                container.innerHTML += `
+                    <div class="user-card">
+
+                        <h3>${user.name} 👤</h3>
+
+                        <p>${user.bio || "No bio yet."}</p>
+
+                        <div class="counts">
+
+                            👥 Followers:
+                            <span id="followers-${user.id}">
+                                0
+                            </span>
+
+                            &nbsp; | &nbsp;
+
+                            ➡️ Following:
+                            <span id="following-${user.id}">
+                                0
+                            </span>
+
+                        </div>
+
+                        <strong>This is you</strong>
+
+                    </div>
+                `;
+
+                loadFollowCounts(user.id);
+
+                return;
+            }
+
+
+            // ==============================
+            // OTHER USERS
+            // ==============================
+
+            container.innerHTML += `
+                <div class="user-card">
+
+                    <h3>${user.name}</h3>
+
+                    <p>${user.bio || "No bio yet."}</p>
+
+                    <div class="counts">
+
+                        👥 Followers:
+                        <span id="followers-${user.id}">
+                            0
+                        </span>
+
+                        &nbsp; | &nbsp;
+
+                        ➡️ Following:
+                        <span id="following-${user.id}">
+                            0
+                        </span>
+
+                    </div>
+
+                    <button
+                        id="follow-btn-${user.id}"
+                        onclick="toggleFollow(${user.id})">
+                        Loading...
+                    </button>
+
+                </div>
+            `;
+
+
+            checkFollowStatus(user.id);
+
+            loadFollowCounts(user.id);
+
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("users-list").innerHTML =
+            "<p>Could not load users.</p>";
+    }
+}
+
+
+// ==============================
+// CHECK FOLLOW STATUS
+// ==============================
+
+async function checkFollowStatus(userId) {
+
+    const token = localStorage.getItem("token");
+
+    try {
+
+        const response = await fetch(
+            `/api/users/${userId}/follow-status`,
+            {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        const button = document.getElementById(
+            `follow-btn-${userId}`
+        );
+
+        if (!button) return;
+
+
+        if (data.following) {
+
+            button.textContent = "Unfollow";
+
+            button.classList.add("following");
+
+        } else {
+
+            button.textContent = "Follow";
+
+            button.classList.remove("following");
+
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+}
+
+
+// ==============================
+// LOAD FOLLOWER/FOLLOWING COUNTS
+// ==============================
+
+async function loadFollowCounts(userId) {
+
+    try {
+
+        // Followers
+        const followersResponse = await fetch(
+            `/api/users/${userId}/followers-count`
+        );
+
+        const followersData =
+            await followersResponse.json();
+
+        const followersElement =
+            document.getElementById(
+                `followers-${userId}`
+            );
+
+        if (followersElement) {
+
+            followersElement.textContent =
+                followersData.count;
+
+        }
+
+
+        // Following
+        const followingResponse = await fetch(
+            `/api/users/${userId}/following-count`
+        );
+
+        const followingData =
+            await followingResponse.json();
+
+        const followingElement =
+            document.getElementById(
+                `following-${userId}`
+            );
+
+        if (followingElement) {
+
+            followingElement.textContent =
+                followingData.count;
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Could not load follow counts:",
+            error
+        );
+
+    }
+}
+
+
+// ==============================
+// FOLLOW / UNFOLLOW
+// ==============================
+
+async function toggleFollow(userId) {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+
+        alert("Please login first.");
+
+        return;
+    }
+
+
+    try {
+
+        const response = await fetch(
+            `/api/users/${userId}/follow`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            alert(data.error);
+
+            return;
+        }
+
+
+        // Update Follow/Unfollow button
+        await checkFollowStatus(userId);
+
+
+        // Update target user's counts
+        await loadFollowCounts(userId);
+
+
+        // Update current user's counts
+        const currentUser = JSON.parse(
+            localStorage.getItem("user")
+        );
+
+
+        if (currentUser) {
+
+            await loadFollowCounts(
+                currentUser.id
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Something went wrong.");
+
+    }
+}
+
+
+// ==============================
+// START
+// ==============================
+function logout() {
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    alert("Logged out successfully!");
+
+    window.location.href = "login.html";
+}
+
+loadUsers();
+
+</script>
+
+</body>
+</html>

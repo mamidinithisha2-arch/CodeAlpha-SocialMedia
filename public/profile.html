@@ -1,0 +1,306 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>My Profile - SocialConnect</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+
+<body>
+
+
+    <!-- HEADER -->
+
+    <header>
+
+        <h1>SocialConnect</h1>
+
+        <nav>
+    <a href="index.html">Home</a>
+    <a href="profile.html">Profile</a>
+    <a href="users.html">Users</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+    <a href="#" onclick="logout()">Logout</a>
+</nav>
+
+    </header>
+
+
+
+    <!-- PROFILE -->
+
+    <main>
+
+        <section class="profile">
+
+            <h2>👤 My Profile</h2>
+
+
+            <div id="profileData">
+
+                <p>Loading profile...</p>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- EDIT BIO -->
+
+            <h3>Edit Bio</h3>
+
+            <textarea
+                id="bio"
+                rows="4"
+                placeholder="Write something about yourself..."
+            ></textarea>
+
+            <br><br>
+
+            <button onclick="updateBio()">
+                Save Bio
+            </button>
+
+        </section>
+
+    </main>
+
+
+
+    <script>
+
+
+        // ==============================
+        // LOAD PROFILE
+        // ==============================
+
+        async function loadProfile() {
+
+            const token =
+                localStorage.getItem("token");
+
+
+            if (!token) {
+
+                alert("Please login first.");
+
+                window.location.href =
+                    "login.html";
+
+                return;
+
+            }
+
+
+            try {
+
+                const response =
+                    await fetch("/api/profile", {
+
+                        headers: {
+
+                            "Authorization":
+                                "Bearer " + token
+
+                        }
+
+                    });
+
+
+                const user =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        user.error ||
+                        "Could not load profile."
+                    );
+
+                    return;
+
+                }
+
+
+                document.getElementById(
+                    "profileData"
+                ).innerHTML = `
+
+                    <h3>${user.name}</h3>
+
+                    <p>
+                        <strong>Email:</strong>
+                        ${user.email}
+                    </p>
+
+                    <p>
+                        <strong>Bio:</strong>
+                        ${user.bio || "No bio yet."}
+                    </p>
+
+                    <div class="profile-stats">
+
+                        <p>
+                            📝 Posts:
+                            <strong>
+                                ${user.posts_count}
+                            </strong>
+                        </p>
+
+                        <p>
+                            👥 Followers:
+                            <strong>
+                                ${user.followers_count}
+                            </strong>
+                        </p>
+
+                        <p>
+                            ➕ Following:
+                            <strong>
+                                ${user.following_count}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                `;
+
+
+                document.getElementById("bio").value =
+                    user.bio || "";
+
+
+            } catch (error) {
+
+                console.error(error);
+
+                document.getElementById(
+                    "profileData"
+                ).innerHTML =
+                    "<p>Server error.</p>";
+
+            }
+
+        }
+
+
+
+        // ==============================
+        // UPDATE BIO
+        // ==============================
+
+        async function updateBio() {
+
+            const token =
+                localStorage.getItem("token");
+
+
+            if (!token) {
+
+                alert("Please login first.");
+
+                return;
+
+            }
+
+
+            const bio =
+                document.getElementById("bio").value;
+
+
+            try {
+
+                const response =
+                    await fetch("/api/profile", {
+
+                        method: "PUT",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                "Bearer " + token
+
+                        },
+
+                        body: JSON.stringify({
+
+                            bio: bio
+
+                        })
+
+                    });
+
+
+                const data =
+                    await response.json();
+
+
+                if (response.ok) {
+
+                    alert(
+                        "Profile updated successfully!"
+                    );
+
+                    loadProfile();
+
+                } else {
+
+                    alert(
+                        data.error ||
+                        "Could not update profile."
+                    );
+
+                }
+
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert("Server error.");
+
+            }
+
+        }
+
+
+
+        // ==============================
+        // LOAD PROFILE WHEN PAGE OPENS
+        // ==============================
+function logout() {
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    alert("Logged out successfully!");
+
+    window.location.href = "login.html";
+}
+        loadProfile();
+        
+
+
+    </script>
+
+
+</body>
+
+</html>
+```
